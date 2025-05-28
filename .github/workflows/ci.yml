@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Install WinAppDriver
+      run: |
+        Invoke-WebRequest -Uri https://github.com/microsoft/WinAppDriver/releases/download/v1.2.1/WindowsApplicationDriver.msi -OutFile WinAppDriver.msi
+        Start-Process msiexec.exe -Wait -ArgumentList '/I WinAppDriver.msi /quiet'
+
+    - name: Start WinAppDriver
+      run: |
+        Start-Process -FilePath "C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe"
+      shell: pwsh
+
+    - name: Build solution
+      run: dotnet build --configuration Release
+
+    - name: Run tests
+      run: dotnet test --configuration Release --no-build --logger "trx"
+
+    - name: Stop WinAppDriver
+      run: |
+        Get-Process WinAppDriver -ErrorAction SilentlyContinue | Stop-Process
+      shell: pwsh
